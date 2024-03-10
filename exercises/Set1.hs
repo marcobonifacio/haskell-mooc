@@ -136,4 +136,4 @@ power n k = if k == 0 then 1 else n * power n (k-1)
 
 ilog3 :: Integer -> Integer
 ilog3 0 = 0
-ilog3 n = let x = n `div` 3 in 1 + ilog3 x
+ilog3 n = 1 + ilog3 (div n 3)
