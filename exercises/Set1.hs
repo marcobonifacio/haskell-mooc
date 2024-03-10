@@ -88,8 +88,8 @@ checkPassword password = if password == "swordfish" || password == "mellon"
 -- in grams, and returns the cost in credits.
 
 postagePrice :: Int -> Int
-postagePrice w  = if w <= 250 then 250 else
-                  if w <= 500 then 300 + w else 6000
+postagePrice w  = if w <= 500 then 250 else
+                  if w <= 5000 then 300 + w else 6000
 
 ------------------------------------------------------------------------------
 -- Ex 8: define a function isZero that returns True if it is given an
@@ -109,14 +109,14 @@ isZero _ = False
 -- computes the sum 1+2+...+n
 
 sumTo :: Integer -> Integer
-sumTo n = n + sumTo (n-1)
+sumTo n = if n == 0 then 0 else n + sumTo (n-1)
 
 ------------------------------------------------------------------------------
 -- Ex 10: power n k should compute n to the power k (i.e. n^k)
 -- Use recursion.
 
 power :: Integer -> Integer -> Integer
-power n k = n * power n (k-1)
+power n k = if k == 0 then 1 else n * power n (k-1)
 
 ------------------------------------------------------------------------------
 -- Ex 11: ilog3 n should be the number of times you can divide given
@@ -135,5 +135,5 @@ power n k = n * power n (k-1)
 --   ilog3 7 ==> 2
 
 ilog3 :: Integer -> Integer
-ilog3 0 = 1
-ilog3 n = sum [1 | div (ilog3 (n-1)) 3 > 0]
+ilog3 0 = 0
+ilog3 n = let x = n `div` 3 in 1 + ilog3 x
