@@ -40,7 +40,7 @@ import Mooc.Todo
 
 buildList :: Int -> Int -> Int -> [Int]
 buildList start 0 end = [end]
-buildList start count end = start : (buildList start (count - 1) end)
+buildList start count end = start : buildList start (count - 1) end
 
 ------------------------------------------------------------------------------
 -- Ex 2: given i, build the list of sums [1, 1+2, 1+2+3, .., 1+2+..+i]
@@ -50,10 +50,19 @@ buildList start count end = start : (buildList start (count - 1) end)
 -- Ps. you'll probably need a recursive helper function
 
 sums :: Int -> [Int]
-sums 1 = [1]
-sums i = sum i : sums (i-1)
-    where sum 1 = 1
-          sum i = i + sum (i-1)
+sums 0 = []
+sums i = sums' 0 i
+
+sums' :: Int -> Int -> [Int]
+sums' a b
+    | a == b = []
+    | otherwise = sum (a+1) : sums' (a+1) b
+        where sum x = if x == 1 then 1 else x + sum (x-1)
+
+--sums i = go 0 1
+--  where go sum j
+--          | j>i = []
+--          | otherwise = (sum+j) : go (sum+j) (j+1)
 
 ------------------------------------------------------------------------------
 -- Ex 3: define a function mylast that returns the last value of the
@@ -68,7 +77,7 @@ sums i = sum i : sums (i-1)
 
 mylast :: a -> [a] -> a
 mylast def [] = def
-mylast def (x:xs) = mylast x xs
+mylast _ (x:xs) = mylast x xs
 
 ------------------------------------------------------------------------------
 -- Ex 4: safe list indexing. Define a function indexDefault so that
@@ -86,9 +95,9 @@ mylast def (x:xs) = mylast x xs
 --   indexDefault ["a","b","c"] (-1) "d" ==> "d"
 
 indexDefault :: [a] -> Int -> a -> a
-indexDefault (x:xs) index def
-    | index <= 0 = def
-    | otherwise = indexDefault xs (index-1) x
+indexDefault [] _ def = def
+indexDefault (x:xs) 0 def = x
+indexDefault (x:xs) index def = indexDefault xs (index-1) def
 
 ------------------------------------------------------------------------------
 -- Ex 5: define a function that checks if the given list is in
@@ -104,10 +113,15 @@ indexDefault (x:xs) index def
 --   sorted [7,2,7] ==> False
 
 sorted :: [Int] -> Bool
-sorted x:[] = True
-sorted x:y:xs
+sorted [] = True
+sorted [x] = True
+sorted (x:y:xs)
     | x <= y = sorted (y:xs)
     | x > y = False
+
+--  | x>y       = False
+--  | otherwise = sorted (y:xs)
+
 
 ------------------------------------------------------------------------------
 -- Ex 6: compute the partial sums of the given list like this:
@@ -120,9 +134,9 @@ sorted x:y:xs
 
 sumsOf :: [Int] -> [Int]
 sumsOf [] = []
-sumsOf (x:xs) = sum x : sums xs
-    where sum 0 = 0
-          sum x = x + sum (x-1)
+sumsOf xs = go 0 xs
+    where go n (x:xs) = (n+x) : go (n+x) xs
+          go _ _ = []
 
 ------------------------------------------------------------------------------
 -- Ex 7: implement the function merge that merges two sorted lists of
@@ -139,8 +153,11 @@ merge [] [] = []
 merge (x:xs) [] = x : merge xs []
 merge [] (y:ys) = y : merge [] ys
 merge (x:xs) (y:ys)
-    | if x <= y = x : merge xs (y:ys)
-    | if x > y = y : merge (x:xs) ys
+    | x <= y = x : merge xs (y:ys)
+    | x > y = y : merge (x:xs) ys
+
+--merge [] ys = ys
+--merge xs [] = xs
 
 ------------------------------------------------------------------------------
 -- Ex 8: compute the biggest element, using a comparison function
@@ -183,7 +200,9 @@ mymaximum bigger initial (x:xs)
 map2 :: (a -> b -> c) -> [a] -> [b] -> [c]
 map2 f [] _ = []
 map2 f _ [] = []
-map2 f (a:as) (b:bs) = f a b : map2 as bs
+map2 f (a:as) (b:bs) = f a b : map2 f as bs
+
+-- map2 f _      _      = []
 
 ------------------------------------------------------------------------------
 -- Ex 10: implement the function maybeMap, which works a bit like a
@@ -208,5 +227,5 @@ map2 f (a:as) (b:bs) = f a b : map2 as bs
 
 maybeMap :: (a -> Maybe b) -> [a] -> [b]
 maybeMap f [] = []
-maybeMap f (x:xs) = case x of Nothing -> maybeMap xs
-                              Just x  -> x : maybeMap xs
+maybeMap f (x:xs) = case f x of Nothing -> maybeMap f xs
+                                Just y  -> y : maybeMap f xs
