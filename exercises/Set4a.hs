@@ -36,9 +36,12 @@ import Data.Array
 
 allEqual :: Eq a => [a] -> Bool
 allEqual [] = True
+allEqual [x] = True
 allEqual (x:y:xs)
     | x == y = allEqual (y:xs)
     | otherwise = False
+
+-- allEqual (x:xs) = all (==x) xs
 
 ------------------------------------------------------------------------------
 -- Ex 2: implement the function distinct which returns True if all
@@ -55,8 +58,10 @@ allEqual (x:y:xs)
 distinct :: Eq a => [a] -> Bool
 distinct [] = True
 distinct (x:xs)
-    | foldr (==) x xs = False
-    | otherwise = distinct xs
+    | x `notElem` xs = distinct xs
+    | otherwise = False
+
+-- distinct xs = xs == nub xs
 
 ------------------------------------------------------------------------------
 -- Ex 3: implement the function middle that returns the middle value
@@ -71,9 +76,11 @@ distinct (x:xs)
 
 middle :: Ord a => a -> a -> a -> a
 middle x y z
-    | (x >= y && x <= z) || (x <= y && x >= z) = x
-    | (y > x && y < z) || (y < x && y > z) = y
+    | x >= y && x <= z || x <= y && x >= z = x
+    | y > x && y < z || y < x && y > z = y
     | otherwise = z
+
+-- middle x y z = sort [x,y,z] !! 1
 
 ------------------------------------------------------------------------------
 -- Ex 4: return the range of an input list, that is, the difference
@@ -109,13 +116,24 @@ rangeOf xs = maximum xs - minimum xs
 
 longest :: Ord a => [[a]] -> [a]
 longest [[]] = []
-longest [xs:[ys]]
+longest (xs:ys)
+    | foldr longer xs ys == xs = xs
+    | otherwise = longest ys
 
 longer :: Ord a => [a] -> [a] -> [a]
 longer xs ys
     | length xs > length ys = xs
     | length xs < length ys = ys
     | otherwise = if take 1 xs <= take 1 ys then xs else ys
+
+-- longest (xs:xss) =
+--   let longer :: Ord a => [a] -> [a] -> [a]
+--       longer xs ys
+--         | length xs < length ys = ys
+--         | length xs > length ys = xs
+--         | head xs <= head ys    = xs
+--         | otherwise             = ys
+--   in foldr longer xs xss
 
 ------------------------------------------------------------------------------
 -- Ex 6: Implement the function incrementKey, that takes a list of
@@ -131,8 +149,16 @@ longer xs ys
 --   incrementKey True [(True,1),(False,3),(True,4)] ==> [(True,2),(False,3),(True,5)]
 --   incrementKey 'a' [('a',3.4)] ==> [('a',4.4)]
 
-incrementKey :: k -> [(k,v)] -> [(k,v)]
-incrementKey = todo
+incrementKey :: (Eq k, Num v) => k -> [(k,v)] -> [(k,v)]
+incrementKey _ []  = []
+incrementKey k (x:xs)
+    | k == fst x = (k, snd x + 1) : incrementKey k xs
+    | otherwise = x :incrementKey k xs
+
+-- incrementKey k kvs = map incr kvs
+--     where incr (k',v)
+--               | k'==k = (k',v+1)
+--               | otherwise = (k',v)
 
 ------------------------------------------------------------------------------
 -- Ex 7: compute the average of a list of values of the Fractional
@@ -147,7 +173,7 @@ incrementKey = todo
 -- length to a Fractional
 
 average :: Fractional a => [a] -> a
-average xs = todo
+average xs = sum xs / fromIntegral (length xs)
 
 ------------------------------------------------------------------------------
 -- Ex 8: given a map from player name to score and two players, return
@@ -166,7 +192,14 @@ average xs = todo
 --     ==> "Lisa"
 
 winner :: Map.Map String Int -> String -> String -> String
-winner scores player1 player2 = todo
+winner scores player1 player2 =
+    if Map.lookup player1 scores >= Map.lookup player2 scores
+    then player1 else player2
+
+-- winner scores player1 player2
+--   | score player2 > score player1 = player2
+--   | otherwise = player1
+--   where score p = Map.findWithDefault 0 p scores
 
 ------------------------------------------------------------------------------
 -- Ex 9: compute how many times each value in the list occurs. Return
@@ -181,7 +214,13 @@ winner scores player1 player2 = todo
 --     ==> Map.fromList [(False,3),(True,1)]
 
 freqs :: (Eq a, Ord a) => [a] -> Map.Map a Int
-freqs xs = todo
+freqs [] = Map.empty
+freqs (x:xs) = Map.insert x (countFirst (x:xs)) (freqs xs)
+
+countFirst :: (Eq a, Ord a) => [a] -> Int
+countFirst (x:xs) = foldr ((\a -> if a then (+ 1) else (+ 0)) . (== x)) 1 xs
+
+-- freqs = foldr (Map.alter $ Just . maybe 1 (+1)) Map.empty
 
 ------------------------------------------------------------------------------
 -- Ex 10: recall the withdraw example from the course material. Write a
@@ -209,7 +248,23 @@ freqs xs = todo
 --     ==> fromList [("Bob",100),("Mike",50)]
 
 transfer :: String -> String -> Int -> Map.Map String Int -> Map.Map String Int
-transfer from to amount bank = todo
+transfer from to amount bank
+    | amount <= 0 = bank
+    | Map.notMember from bank  = bank
+    | Map.notMember to bank = bank
+    | Map.lookup from bank < Just amount = bank
+    | otherwise = Map.alter give from (Map.alter receive to bank) where
+        give _ = case Map.lookup from bank of Just x -> Just (x - amount);
+                                              Nothing -> Nothing;
+        receive _ =  case Map.lookup to bank of Just x -> Just (x + amount);
+                                                Nothing -> Nothing;
+
+-- transfer from to amount bank =
+--   case (Map.lookup from bank, Map.lookup to bank) of
+--     (Just fromBalance, Just toBalance)
+--       | amount >= 0 && fromBalance >= amount ->
+--           Map.adjust (+amount) to (Map.adjust (\x -> x-amount) from bank)
+--     _ -> bank
 
 ------------------------------------------------------------------------------
 -- Ex 11: given an Array and two indices, swap the elements in the indices.
@@ -219,7 +274,7 @@ transfer from to amount bank = todo
 --         ==> array (1,4) [(1,"one"),(2,"three"),(3,"two"),(4,"four")]
 
 swap :: Ix i => i -> i -> Array i a -> Array i a
-swap i j arr = todo
+swap i j arr = arr // [(i, arr ! j), (j, arr ! i)]
 
 ------------------------------------------------------------------------------
 -- Ex 12: given an Array, find the index of the largest element. You
@@ -230,4 +285,13 @@ swap i j arr = todo
 -- Hint: check out Data.Array.indices or Data.Array.assocs
 
 maxIndex :: (Ix i, Ord a) => Array i a -> i
-maxIndex = todo
+maxIndex arr = largestElement (assocs arr)
+
+largestElement :: (Ord a) => [(i,a)] -> i
+largestElement [x] = fst x
+largestElement (x:xs)
+    | foldr (((&&) . (< snd x)) . snd) True xs = fst x
+    | otherwise = largestElement xs
+
+-- maxIndex arr = index
+--   where (index, _) = maximumBy (\(_,x) (_,y) -> compare x y) (assocs arr)
