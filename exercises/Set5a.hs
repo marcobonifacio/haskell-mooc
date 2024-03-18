@@ -211,6 +211,9 @@ rgb Blue = [0,0,1]
 rgb (Mix c d) = map (/ 2) (zipWith (+) (rgb c) (rgb d))
 rgb (Invert c) = map (1 -) (rgb c)
 
+-- rgb (Mix c c') = zipWith avg (rgb c) (rgb c')
+--   where avg x y = (x+y)/2
+
 ------------------------------------------------------------------------------
 -- Ex 9: define a parameterized datatype OneOrTwo that contains one or
 -- two values of the given type. The constructors should be called One and Two.
@@ -267,11 +270,16 @@ data Nat = Zero | PlusOne Nat
 
 fromNat :: Nat -> Int
 fromNat Zero = 0
-fromNat (PlusOne n) = 1 + fromNat (n-1)
+fromNat (PlusOne n) = 1 + fromNat n
 
 toNat :: Int -> Maybe Nat
-toNat 0 = Just Zero
-toNat z = case toNat z of Just _ -> PlusOne (toNat (z-1))
+toNat z
+  | z < 0 = Nothing
+  | otherwise = Just (toNat' z)
+
+toNat' :: Int -> Nat
+toNat' 0 = Zero
+toNat' y = PlusOne (toNat' (y-1))
 
 ------------------------------------------------------------------------------
 -- Ex 12: While pleasingly simple in its definition, the Nat datatype is not
@@ -331,10 +339,18 @@ inc (O b) = I b
 inc (I b) = O (inc b)
 
 prettyPrint :: Bin -> String
-prettyPrint = todo
+prettyPrint End = ""
+prettyPrint (O b) = prettyPrint b ++ "0"
+prettyPrint (I b) = prettyPrint b ++ "1"
 
 fromBin :: Bin -> Int
-fromBin = todo
+fromBin b = fromBin' b 0
+
+fromBin' :: Bin -> Int -> Int
+fromBin' End curr = 0
+fromBin' (O b) n = fromBin' b (n+1)
+fromBin' (I b) n = (2 ^ n) + fromBin' b (n+1)
 
 toBin :: Int -> Bin
-toBin = todo
+toBin 0 = O End
+toBin n = inc (toBin (n-1))

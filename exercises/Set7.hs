@@ -4,9 +4,10 @@ module Set7 where
 
 import Mooc.Todo
 import Data.List
-import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.List.NonEmpty (NonEmpty ((:|)), reverse)
 import Data.Monoid
 import Data.Semigroup
+import Language.Haskell.TH (javaScript)
 
 ------------------------------------------------------------------------------
 -- Ex 1: you'll find below the types Time, Distance and Velocity,
@@ -26,11 +27,11 @@ data Velocity = Velocity Double
 
 -- velocity computes a velocity given a distance and a time
 velocity :: Distance -> Time -> Velocity
-velocity = todo
+velocity (Distance distance) (Time time) = Velocity (distance / time)
 
 -- travel computes a distance given a velocity and a time
 travel :: Velocity -> Time -> Distance
-travel = todo
+travel (Velocity velocity) (Time time) = Distance (velocity * time)
 
 ------------------------------------------------------------------------------
 -- Ex 2: let's implement a simple Set datatype. A Set is a list of
@@ -49,15 +50,16 @@ data Set a = Set [a]
 
 -- emptySet is a set with no elements
 emptySet :: Set a
-emptySet = todo
+emptySet = Set []
 
 -- member tests if an element is in a set
 member :: Eq a => a -> Set a -> Bool
-member = todo
+member m (Set xs) = m `elem` xs
 
 -- add a member to a set
-add :: a -> Set a -> Set a
-add = todo
+add :: Ord a => a -> Set a -> Set a
+add a (Set xs) = if a `elem` xs then
+  Set xs else Set (takeWhile (<a) xs ++ [a] ++ dropWhile (<a) xs)
 
 ------------------------------------------------------------------------------
 -- Ex 3: a state machine for baking a cake. The type Event represents
@@ -92,14 +94,24 @@ add = todo
 data Event = AddEggs | AddFlour | AddSugar | Mix | Bake
   deriving (Eq,Show)
 
-data State = Start | Error | Finished
+data State = Start | Error | Finished | Egged | SugaredNotFloured |
+  FlouredNotSugared | FlourSugared | Mixed
   deriving (Eq,Show)
 
-step = todo
+step :: State -> Event -> State
+step Finished _ = Finished
+step Mixed Bake = Finished
+step FlourSugared Mix = Mixed
+step FlouredNotSugared AddSugar = FlourSugared
+step SugaredNotFloured AddFlour = FlourSugared
+step Egged AddSugar = SugaredNotFloured
+step Egged AddFlour = FlouredNotSugared
+step Start AddEggs = Egged
+step _ _ = Error
 
 -- do not edit this
 bake :: [Event] -> State
-bake events = go Start events
+bake = go Start
   where go state [] = state
         go state (e:es) = go (step state e) es
 
@@ -115,15 +127,16 @@ bake events = go Start events
 --   average (1.0 :| [2.0,3.0])  ==>  2.0
 
 average :: Fractional a => NonEmpty a -> a
-average = todo
-
+average (n :| []) = n
+average (n :| xs) = sum (n:xs) / fromIntegral (length (n:xs))
 ------------------------------------------------------------------------------
 -- Ex 5: reverse a NonEmpty list.
 --
 -- PS. The Data.List.NonEmpty type has been imported for you
 
 reverseNonEmpty :: NonEmpty a -> NonEmpty a
-reverseNonEmpty = todo
+reverseNonEmpty (x :| []) = x :| []
+reverseNonEmpty (x :| xs) = head ys :| tail ys where ys = Data.List.reverse (x:xs)
 
 ------------------------------------------------------------------------------
 -- Ex 6: implement Semigroup instances for the Distance, Time and
@@ -135,8 +148,19 @@ reverseNonEmpty = todo
 -- velocity (Distance 50 <> Distance 10) (Time 1 <> Time 2)
 --    ==> Velocity 20
 
+instance Semigroup Distance where
+  (<>) :: Distance -> Distance -> Distance
+  (<>) (Distance x) (Distance y) = Distance (x + y)
 
-------------------------------------------------------------------------------
+instance Semigroup Time where
+  (<>) :: Time -> Time -> Time
+  (<>) (Time x) (Time y) = Time (x + y)
+
+instance Semigroup Velocity where
+  (<>) :: Velocity -> Velocity -> Velocity
+  (<>) (Velocity x) (Velocity y) = Velocity (x + y)
+
+-----------------------------------------------------------------------------
 -- Ex 7: implement a Monoid instance for the Set type from exercise 2.
 -- The (<>) operation should be the union of sets.
 --
@@ -144,6 +168,13 @@ reverseNonEmpty = todo
 --
 -- What are the class constraints for the instances?
 
+instance (Eq a, Ord a) => Semigroup (Set a) where
+  (<>) :: Set a -> Set a -> Set a
+  (<>) (Set x) (Set y) = Set (sort . nub $ x ++ y)
+
+instance (Eq a, Ord a) => Monoid (Set a) where
+  mempty :: (Eq a, Ord a) => Set a
+  mempty = emptySet
 
 ------------------------------------------------------------------------------
 -- Ex 8: below you'll find two different ways of representing
@@ -166,18 +197,24 @@ reverseNonEmpty = todo
 
 data Operation1 = Add1 Int Int
                 | Subtract1 Int Int
+                | Multiply1 Int Int
   deriving Show
 
 compute1 :: Operation1 -> Int
 compute1 (Add1 i j) = i+j
 compute1 (Subtract1 i j) = i-j
+compute1 (Multiply1 i j) = i*j
 
 show1 :: Operation1 -> String
-show1 = todo
+show1 (Add1 i j) = show i ++ "+" ++ show j
+show1 (Subtract1 i j) = show i ++ "-" ++ show j
+show1 (Multiply1 i j) = show i ++ "*" ++ show j
 
 data Add2 = Add2 Int Int
   deriving Show
 data Subtract2 = Subtract2 Int Int
+  deriving Show
+data Multiply2 = Multiply2 Int Int
   deriving Show
 
 class Operation2 op where
@@ -189,6 +226,20 @@ instance Operation2 Add2 where
 instance Operation2 Subtract2 where
   compute2 (Subtract2 i j) = i-j
 
+instance Operation2 Multiply2 where
+  compute2 (Multiply2 i j) = i*j
+
+class Show2 op where
+  show2 :: op -> String
+
+instance Show2 Add2 where
+  show2 (Add2 i j) = show i ++ "+" ++ show j
+
+instance Show2 Subtract2 where
+  show2 (Subtract2 i j) = show i ++ "-" ++ show j
+
+instance Show2 Multiply2 where
+  show2 (Multiply2 i j) = show i ++ "*" ++ show j
 
 ------------------------------------------------------------------------------
 -- Ex 9: validating passwords. Below you'll find a type
@@ -217,7 +268,14 @@ data PasswordRequirement =
   deriving Show
 
 passwordAllowed :: String -> PasswordRequirement -> Bool
-passwordAllowed = todo
+passwordAllowed pw (MinimumLength i) = length pw >= i
+passwordAllowed pw (ContainsSome s) = not $ dropNot s pw
+passwordAllowed pw (DoesNotContain s) = dropNot s pw
+passwordAllowed pw (And r1 r2) = passwordAllowed pw r1 && passwordAllowed pw r2
+passwordAllowed pw (Or r1 r2) = passwordAllowed pw r1 || passwordAllowed pw r2
+
+dropNot :: String -> String -> Bool
+dropNot chk psw = null $ dropWhile (`notElem` chk) psw
 
 ------------------------------------------------------------------------------
 -- Ex 10: a DSL for simple arithmetic expressions with addition and
