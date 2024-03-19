@@ -297,17 +297,21 @@ dropNot chk psw = null $ dropWhile (`notElem` chk) psw
 --     ==> "(3*(1+1))"
 --
 
-data Arithmetic = Todo
+data Arithmetic = Literal Integer | Operation String Arithmetic Arithmetic
   deriving Show
 
 literal :: Integer -> Arithmetic
-literal = todo
+literal = Literal
 
 operation :: String -> Arithmetic -> Arithmetic -> Arithmetic
-operation = todo
+operation = Operation
 
 evaluate :: Arithmetic -> Integer
-evaluate = todo
+evaluate (Literal i) = i
+evaluate (Operation sym x y)
+  | sym == "+" = (+) (evaluate x) (evaluate y)
+  | sym == "*" = (*) (evaluate x) (evaluate y)
 
 render :: Arithmetic -> String
-render = todo
+render (Literal i) = show i
+render (Operation sym x y) = "(" ++ render x ++ sym ++ render y ++ ")"
