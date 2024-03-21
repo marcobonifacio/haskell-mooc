@@ -47,10 +47,10 @@ type Col   = Int
 type Coord = (Row, Col)
 
 nextRow :: Coord -> Coord
-nextRow (i,j) = todo
+nextRow (i,j) = (i+1,1)
 
 nextCol :: Coord -> Coord
-nextCol (i,j) = todo
+nextCol (i,j) = (i,j+1)
 
 --------------------------------------------------------------------------------
 -- Ex 2: Implement the function prettyPrint that, given the size of
@@ -103,7 +103,17 @@ nextCol (i,j) = todo
 type Size = Int
 
 prettyPrint :: Size -> [Coord] -> String
-prettyPrint = todo
+prettyPrint n [] = table n
+prettyPrint n (x:xs) = placeQ n (prettyPrint n xs) x
+
+table :: Size -> String
+table n = take (n*(n+1)) (cycle (replicate n '.' ++ "\n"))
+
+coordIndex :: Size -> Coord -> Int
+coordIndex n a = ((snd a - n) + (n * fst a + (fst a - 1))) - 1
+
+placeQ :: Size -> String -> Coord -> String
+placeQ n tbl a = take (coordIndex n a) tbl ++ "Q" ++ drop (coordIndex n a + 1) tbl
 
 --------------------------------------------------------------------------------
 -- Ex 3: The task in this exercise is to define the relations sameRow, sameCol,
@@ -127,16 +137,16 @@ prettyPrint = todo
 --   sameAntidiag (500,5) (5,500) ==> True
 
 sameRow :: Coord -> Coord -> Bool
-sameRow (i,j) (k,l) = todo
+sameRow (i,j) (k,l) = i == k
 
 sameCol :: Coord -> Coord -> Bool
-sameCol (i,j) (k,l) = todo
+sameCol (i,j) (k,l) = j == l
 
 sameDiag :: Coord -> Coord -> Bool
-sameDiag (i,j) (k,l) = todo
+sameDiag (i,j) (k,l) = j - i == l - k
 
 sameAntidiag :: Coord -> Coord -> Bool
-sameAntidiag (i,j) (k,l) = todo
+sameAntidiag (i,j) (k,l) = i + j == k + l
 
 --------------------------------------------------------------------------------
 -- Ex 4: In chess, a queen may capture another piece in the same row, column,
@@ -191,7 +201,10 @@ type Candidate = Coord
 type Stack     = [Coord]
 
 danger :: Candidate -> Stack -> Bool
-danger = todo
+danger c = foldr ((||) . danger' c) False
+
+danger' :: Candidate -> Coord -> Bool
+danger' a q = sameRow a q || sameCol a q || sameDiag a q || sameAntidiag a q
 
 --------------------------------------------------------------------------------
 -- Ex 5: In this exercise, the task is to write a modified version of
@@ -226,7 +239,24 @@ danger = todo
 -- solution to this version. Any working solution is okay in this exercise.)
 
 prettyPrint2 :: Size -> Stack -> String
-prettyPrint2 = todo
+prettyPrint2 n qs = mapMarkDanger n qs (prettyPrint n qs) (coordinates n)
+
+markDanger :: Size -> Stack -> String -> Candidate -> String
+markDanger n qs tbl c
+    | danger c qs = take (coordIndex n c) tbl ++ "#" ++ drop (coordIndex n c + 1) tbl
+    | otherwise = tbl
+
+mapMarkDanger :: Size -> Stack -> String -> [Candidate] -> String
+mapMarkDanger n qs _ [] = prettyPrint n qs
+mapMarkDanger n qs tbl (c:cs) = mapMarkDanger n qs (markDanger n qs tbl c) cs
+
+coordinates :: Size -> Stack
+coordinates 0 = []
+coordinates 1 = [(1,1)]
+coordinates n = zip (replicate n n) [1..n] ++ zip [1..n-1] (replicate (n-1) n) ++ coordinates (n-1)
+
+-- coordIndex :: Size -> Coord -> Int
+-- coordIndex n a = ((snd a - n) + (n * fst a + (fst a - 1))) - 1
 
 --------------------------------------------------------------------------------
 -- Ex 6: Now that we can check if a piece can be safely placed into a square in
