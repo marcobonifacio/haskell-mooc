@@ -239,21 +239,28 @@ danger' a q = sameRow a q || sameCol a q || sameDiag a q || sameAntidiag a q
 -- solution to this version. Any working solution is okay in this exercise.)
 
 prettyPrint2 :: Size -> Stack -> String
-prettyPrint2 n qs = mapMarkDanger n qs (prettyPrint n qs) (coordinates n)
+prettyPrint2 n qs = mapSymbols n qs (table n) (coordinates n)
 
-markDanger :: Size -> Stack -> String -> Candidate -> String
-markDanger n qs tbl c
-    | danger c qs = take (coordIndex n c) tbl ++ "#" ++ drop (coordIndex n c + 1) tbl
-    | otherwise = tbl
+mapSymbols :: Size -> Stack -> String -> [Candidate] -> String
+mapSymbols _ _ tbl [] = tbl
+mapSymbols n qs tbl (c:cs) = mapSymbols n qs (markSymbols n qs tbl c) cs
 
-mapMarkDanger :: Size -> Stack -> String -> [Candidate] -> String
-mapMarkDanger n qs _ [] = prettyPrint n qs
-mapMarkDanger n qs tbl (c:cs) = mapMarkDanger n qs (markDanger n qs tbl c) cs
+markSymbols :: Size -> Stack -> String -> Candidate -> String
+markSymbols n qs tbl c
+  | c `elem` qs = placeQ n tbl c
+  | danger c qs = placeSharp n tbl c
+  | otherwise = tbl
+
+placeSharp :: Size -> String -> Candidate -> String
+placeSharp n tbl c = take (coordIndex n c) tbl ++ "#" ++ drop (coordIndex n c + 1) tbl
 
 coordinates :: Size -> Stack
 coordinates 0 = []
 coordinates 1 = [(1,1)]
 coordinates n = zip (replicate n n) [1..n] ++ zip [1..n-1] (replicate (n-1) n) ++ coordinates (n-1)
+
+--placeQ :: Size -> String -> Coord -> String 
+--placeQ n tbl a = take (coordIndex n a) tbl ++ "Q" ++ drop (coordIndex n a + 1) tbl
 
 -- coordIndex :: Size -> Coord -> Int
 -- coordIndex n a = ((snd a - n) + (n * fst a + (fst a - 1))) - 1
