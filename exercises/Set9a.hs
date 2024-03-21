@@ -15,6 +15,7 @@ import Data.List
 import Data.Ord
 
 import Mooc.Todo
+--import System.Win32 (COORD(xPos))
 
 ------------------------------------------------------------------------------
 -- Ex 1: Implement a function workload that takes in the number of
@@ -57,10 +58,17 @@ echo s = s ++ ", " ++ echo (tail s)
 -- are valid.
 
 countValid :: [String] -> Int
-countValid xs = foldr ((+) . check) 0 xs where
+countValid = foldr ((+) . check) 0 where
   check s
     | (s !! 2) == (s !! 4) || (s !! 3) == (s !! 5) = 1
     | otherwise = 0
+
+-- countValid ns = length (filter valid ns)
+--   where valid n
+--           -- indexing starts from zero!
+--           | n !! 2 == n !! 4 = True
+--           | n !! 3 == n !! 5 = True
+--           | otherwise        = False
 
 ------------------------------------------------------------------------------
 -- Ex 4: Find the first element that repeats two or more times _in a
@@ -77,6 +85,11 @@ repeated [x] = Nothing
 repeated (x:y:xs)
   | x == y = Just x
   | otherwise = repeated (y:xs)
+
+-- repeated (x:y:xs)
+--   | x==y = Just x
+--   | otherwise = repeated (y:xs)
+-- repeated _ = Nothing
 
 ------------------------------------------------------------------------------
 -- Ex 5: A laboratory has been collecting measurements. Some of the
@@ -147,13 +160,42 @@ open s (ClosedLock key)
 -- lock closes a lock. If the lock is already closed, nothing happens.
 lock :: Lock -> Lock
 lock (OpenLock key) = ClosedLock key
-lock (_ key) = ClosedLock key
+lock (ClosedLock key) = ClosedLock key
 
 -- changeCode changes the code of an open lock. If the lock is closed,
 -- nothing happens.
 changeCode :: String -> Lock -> Lock
 changeCode _ (ClosedLock key) = ClosedLock key
 changeCode s (OpenLock key) = OpenLock s
+
+-- data Lock = Closed String | Open String
+
+-- -- aLock should be a locked lock with the code "1234"
+-- aLock :: Lock
+-- aLock = Closed "1234"
+
+-- -- isOpen returns True if the lock is open
+-- isOpen :: Lock -> Bool
+-- isOpen (Open _) = True
+-- isOpen _        = False
+
+-- -- open tries to open the lock with the given code. If the code is
+-- -- wrong, nothing happens.
+-- open :: String -> Lock -> Lock
+-- open code (Closed code')
+--   | code == code' = Open code
+-- open _ l = l
+
+-- -- lock closes a lock. If the lock is already closed, nothing happens.
+-- lock :: Lock -> Lock
+-- lock (Open c) = Closed c
+-- lock l        = l
+
+-- -- changeCode changes the code of an open lock. If the lock is closed,
+-- -- nothing happens.
+-- changeCode :: String -> Lock -> Lock
+-- changeCode code (Open _) = Open code
+-- changeCode _    l        = l
 
 ------------------------------------------------------------------------------
 -- Ex 7: Here's a type Text that just wraps a String. Implement an Eq
@@ -171,6 +213,13 @@ changeCode s (OpenLock key) = OpenLock s
 data Text = Text String
   deriving Show
 
+instance Eq Text where
+  (==) :: Text -> Text -> Bool
+  Text xs == Text ys = strip xs == strip ys
+    where strip ns = [n | n <- ns, (n /= ' ') && (n /= '\n')]
+  
+-- instance Eq Text where
+--   Text s == Text t  =  filter (not . isSpace) s == filter (not . isSpace) t
 
 ------------------------------------------------------------------------------
 -- Ex 8: We can represent functions or mappings as lists of pairs.
@@ -204,7 +253,17 @@ data Text = Text String
 --       ==> [("a",1),("b",2)]
 
 compose :: (Eq a, Eq b) => [(a,b)] -> [(b,c)] -> [(a,c)]
-compose = todo
+compose [] _ = []
+compose [x] ys = foldr (check x) [] [ys]
+compose (x:xs) ys = foldr (check x) [] [ys] ++ compose xs ys
+
+check :: Eq b => (a, b) -> [(b, c)] -> [(a, c)] -> [(a, c)]
+check a xs = case lookup (snd a) xs of Nothing -> (++ [])
+                                       Just n -> ((fst a, n):)
+
+-- compose ab bc = concatMap apply ab
+--   where apply (a,b) = case lookup b bc of Nothing -> []
+--                                           Just c -> [(a,c)]
 
 ------------------------------------------------------------------------------
 -- Ex 9: Reorder a list using a list of indices.
@@ -248,4 +307,6 @@ multiply :: Permutation -> Permutation -> Permutation
 multiply p q = map (\i -> p !! (q !! i)) (identity (length p))
 
 permute :: Permutation -> [a] -> [a]
-permute = todo
+permute ns as = map snd (sortOn fst (zip ns as))
+
+-- permute p = map snd . sortBy (comparing fst) . zip p
