@@ -259,12 +259,6 @@ coordinates 0 = []
 coordinates 1 = [(1,1)]
 coordinates n = zip (replicate n n) [1..n] ++ zip [1..n-1] (replicate (n-1) n) ++ coordinates (n-1)
 
---placeQ :: Size -> String -> Coord -> String 
---placeQ n tbl a = take (coordIndex n a) tbl ++ "Q" ++ drop (coordIndex n a + 1) tbl
-
--- coordIndex :: Size -> Coord -> Int
--- coordIndex n a = ((snd a - n) + (n * fst a + (fst a - 1))) - 1
-
 --------------------------------------------------------------------------------
 -- Ex 6: Now that we can check if a piece can be safely placed into a square in
 -- the chessboard, it's time to write the first piece of the actual solution.
@@ -308,7 +302,10 @@ coordinates n = zip (replicate n n) [1..n] ++ zip [1..n-1] (replicate (n-1) n) +
 --     Q#######
 
 fixFirst :: Size -> Stack -> Maybe Stack
-fixFirst n s = todo
+fixFirst n (q:qs)
+  | not (danger q qs) && snd q <= n = Just (q:qs)
+  | danger q qs && snd q < n = fixFirst n ((fst q, snd q + 1):qs)
+  | otherwise = Nothing
 
 --------------------------------------------------------------------------------
 -- Ex 7: We need two helper functions for stack management.
@@ -330,10 +327,10 @@ fixFirst n s = todo
 -- Hint: Remember nextRow and nextCol? Use them!
 
 continue :: Stack -> Stack
-continue s = todo
+continue (q:qs) = nextRow q:q:qs
 
 backtrack :: Stack -> Stack
-backtrack s = todo
+backtrack (q:q':qs) = nextCol q':qs
 
 --------------------------------------------------------------------------------
 -- Ex 8: Let's take a step. Our algorithm solves the problem (in a
@@ -402,7 +399,9 @@ backtrack s = todo
 --     step 8 [(6,1),(5,4),(4,2),(3,5),(2,3),(1,1)] ==> [(5,5),(4,2),(3,5),(2,3),(1,1)]
 
 step :: Size -> Stack -> Stack
-step = todo
+step n s = case fixFirst n s
+  of Nothing -> backtrack s
+     Just x -> continue x
 
 --------------------------------------------------------------------------------
 -- Ex 9: Let's solve our puzzle! The function finish takes a partial
@@ -417,7 +416,9 @@ step = todo
 -- solve the n queens problem.
 
 finish :: Size -> Stack -> Stack
-finish = todo
+finish n s
+  | length s > n = tail s
+  | otherwise = finish n (step n s)
 
 solve :: Size -> Stack
 solve n = finish n [(1,1)]
