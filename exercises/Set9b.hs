@@ -115,6 +115,17 @@ coordIndex n a = ((snd a - n) + (n * fst a + (fst a - 1))) - 1
 placeQ :: Size -> String -> Coord -> String
 placeQ n tbl a = take (coordIndex n a) tbl ++ "Q" ++ drop (coordIndex n a + 1) tbl
 
+-- prettyPrint n qs =
+--   let
+--     helper (i,j) ((r,c):qs)
+--       | i==r && j == c       = 'Q'  : helper (nextCol (i,j)) qs
+--     helper (i,j) qs
+--       | i > n                = ""
+--       | j > n                = '\n' : helper (nextRow (i,j)) qs
+--       | otherwise            = '.'  : helper (nextCol (i,j)) qs
+--   in
+--     helper (1,1) (sort qs)
+
 --------------------------------------------------------------------------------
 -- Ex 3: The task in this exercise is to define the relations sameRow, sameCol,
 -- sameDiag, and sameAntidiag that check whether or not two coordinates of the
@@ -206,6 +217,10 @@ danger c = foldr ((||) . danger' c) False
 danger' :: Candidate -> Coord -> Bool
 danger' a q = sameRow a q || sameCol a q || sameDiag a q || sameAntidiag a q
 
+-- danger :: Candidate -> Stack -> Bool
+-- danger c qs = or [r c q | r <- relations, q <- qs]
+--   where relations = [sameRow, sameCol, sameDiag, sameAntidiag]
+
 --------------------------------------------------------------------------------
 -- Ex 5: In this exercise, the task is to write a modified version of
 -- prettyPrint that marks those empty squares with '#' that are in the
@@ -259,6 +274,18 @@ coordinates 0 = []
 coordinates 1 = [(1,1)]
 coordinates n = zip (replicate n n) [1..n] ++ zip [1..n-1] (replicate (n-1) n) ++ coordinates (n-1)
 
+-- prettyPrint2 :: Size -> Stack -> String
+-- prettyPrint2 n qs =
+--   let
+--     helper (i,j) qs
+--       | i > n           = ""
+--       | j > n           = '\n' : helper (nextRow (i,j)) qs
+--       | (i,j) `elem` qs = 'Q'  : helper (nextCol (i,j)) qs
+--       | danger (i,j) qs = '#'  : helper (nextCol (i,j)) qs
+--       | otherwise       = '.'  : helper (nextCol (i,j)) qs
+--   in
+--     helper (1,1) (sort qs)
+
 --------------------------------------------------------------------------------
 -- Ex 6: Now that we can check if a piece can be safely placed into a square in
 -- the chessboard, it's time to write the first piece of the actual solution.
@@ -307,6 +334,12 @@ fixFirst n (q:qs)
   | danger q qs && snd q < n = fixFirst n ((fst q, snd q + 1):qs)
   | otherwise = Nothing
 
+-- fixFirst :: Size -> Stack -> Maybe Stack
+-- fixFirst n ((i,j):s)
+--   | j > n          = Nothing
+--   | danger (i,j) s = fixFirst n (nextCol (i,j):s)
+--   | otherwise      = Just ((i,j):s)
+
 --------------------------------------------------------------------------------
 -- Ex 7: We need two helper functions for stack management.
 --
@@ -331,6 +364,10 @@ continue (q:qs) = nextRow q:q:qs
 
 backtrack :: Stack -> Stack
 backtrack (q:q':qs) = nextCol q':qs
+
+-- backtrack :: Stack -> Stack
+-- backtrack (_:(i,j):s) = nextCol (i,j) : s
+-- backtrack s = error $ "can't backtrack " ++ show s
 
 --------------------------------------------------------------------------------
 -- Ex 8: Let's take a step. Our algorithm solves the problem (in a
@@ -399,9 +436,9 @@ backtrack (q:q':qs) = nextCol q':qs
 --     step 8 [(6,1),(5,4),(4,2),(3,5),(2,3),(1,1)] ==> [(5,5),(4,2),(3,5),(2,3),(1,1)]
 
 step :: Size -> Stack -> Stack
-step n s = case fixFirst n s
-  of Nothing -> backtrack s
-     Just x -> continue x
+step n s = case fixFirst n s of 
+    Nothing -> backtrack s
+    Just x -> continue x
 
 --------------------------------------------------------------------------------
 -- Ex 9: Let's solve our puzzle! The function finish takes a partial
