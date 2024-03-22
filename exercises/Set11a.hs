@@ -25,14 +25,16 @@ import Mooc.Todo
 -- first line should be HELLO and the second one WORLD
 
 hello :: IO ()
-hello = todo
+hello = do putStrLn "HELLO"
+           putStrLn "WORLD"
 
 ------------------------------------------------------------------------------
 -- Ex 2: define the IO operation greet that takes a name as an
 -- argument and prints a line "HELLO name".
 
 greet :: String -> IO ()
-greet name = todo
+greet name = do putStr "HELLO "
+                putStrLn name
 
 ------------------------------------------------------------------------------
 -- Ex 3: define the IO operation greet2 that reads a name from the
@@ -42,7 +44,8 @@ greet name = todo
 -- Try to use the greet operation in your solution.
 
 greet2 :: IO ()
-greet2 = todo
+greet2 = do name <- getLine
+            greet name
 
 ------------------------------------------------------------------------------
 -- Ex 4: define the IO operation readWords n which reads n lines from
@@ -56,7 +59,8 @@ greet2 = todo
 --   ["alice","bob","carl"]
 
 readWords :: Int -> IO [String]
-readWords n = todo
+readWords n = do names <- replicateM n readLn
+                 return (sort names)
 
 ------------------------------------------------------------------------------
 -- Ex 5: define the IO operation readUntil f, which reads lines from
@@ -79,7 +83,7 @@ readUntil f = todo
 -- Ex 6: given n, print the numbers from n to 0, one per line
 
 countdownPrint :: Int -> IO ()
-countdownPrint n = todo
+countdownPrint n = do mapM_ print [n,n-1..0]
 
 ------------------------------------------------------------------------------
 -- Ex 7: isums n should read n numbers from the user (one per line) and
