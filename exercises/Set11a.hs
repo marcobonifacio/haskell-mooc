@@ -59,8 +59,8 @@ greet2 = do name <- getLine
 --   ["alice","bob","carl"]
 
 readWords :: Int -> IO [String]
-readWords n = do names <- replicateM n readLn
-                 return (sort names)
+readWords num = do names <- replicateM num getLine
+                   return (sort names)
 
 ------------------------------------------------------------------------------
 -- Ex 5: define the IO operation readUntil f, which reads lines from
@@ -146,4 +146,8 @@ while cond op = todo
 --     4. returns the line read from the user
 
 debug :: String -> IO a -> IO a
-debug s op = todo
+debug s op = do
+  putStrLn s
+  result <- op
+  putStrLn s
+  return result
