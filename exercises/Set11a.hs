@@ -36,6 +36,8 @@ greet :: String -> IO ()
 greet name = do putStr "HELLO "
                 putStrLn name
 
+-- greet name = putStrLn $ "HELLO " ++ name
+
 ------------------------------------------------------------------------------
 -- Ex 3: define the IO operation greet2 that reads a name from the
 -- keyboard and then greets that name like the in the previous
@@ -77,7 +79,17 @@ readWords num = do names <- replicateM num getLine
 --   ["bananas","garlic","pakchoi"]
 
 readUntil :: (String -> Bool) -> IO [String]
-readUntil f = todo
+readUntil f = do go [] where
+  go ws = do
+    w <- getLine
+    if f w then return ws
+      else go (ws ++ [w]) 
+
+-- readUntil f = do word <- getLine
+--                  if f word
+--                    then return []
+--                    else do words <- readUntil f
+--                            return $ word:words
 
 ------------------------------------------------------------------------------
 -- Ex 6: given n, print the numbers from n to 0, one per line
@@ -98,7 +110,19 @@ countdownPrint n = do mapM_ print [n,n-1..0]
 --   5. produces 9
 
 isums :: Int -> IO Int
-isums n = todo
+isums n = isums' 0 n where
+  isums' s 0 = return s
+  isums' s n = do
+    num <- readLn
+    print (s+num)
+    isums' (s+num) (n-1)
+
+-- isums n = go 0 n
+--   where go sum 0 = return sum
+--         go sum n = do i <- readLn
+--                       let sum' = sum+i
+--                       print sum'
+--                       go sum' (n-1)
 
 ------------------------------------------------------------------------------
 -- Ex 8: when is a useful function, but its first argument has type
@@ -106,7 +130,9 @@ isums n = todo
 -- argument has type IO Bool.
 
 whenM :: IO Bool -> IO () -> IO ()
-whenM cond op = todo
+whenM cond op = do
+  test <- cond
+  when test op
 
 ------------------------------------------------------------------------------
 -- Ex 9: implement the while loop. while condition operation should
@@ -126,7 +152,10 @@ ask = do putStrLn "Y/N?"
          return $ line == "Y"
 
 while :: IO Bool -> IO () -> IO ()
-while cond op = todo
+while cond op = do
+  whenM cond (do
+    op
+    while cond op)
 
 ------------------------------------------------------------------------------
 -- Ex 10: given a string and an IO operation, print the string, run
