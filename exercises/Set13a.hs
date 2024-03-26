@@ -11,7 +11,6 @@ import Data.List
 import qualified Data.Map as Map
 
 import Examples.Bank
-import System.Win32 (xBUTTON1, iNVALID_HANDLE_VALUE, globalAlloc)
 
 ------------------------------------------------------------------------------
 -- Ex 1: Your task is to help implement the function readName that
@@ -189,7 +188,9 @@ balance accountName = BankOp go where
 --     ==> ((),Bank (fromList [("cedric",7),("ginny",1),("harry",10)]))
 
 rob :: String -> String -> BankOp ()
-rob from to = todo
+rob from to =
+  balance from +> withdrawOp from +>
+  depositOp to
 
 ------------------------------------------------------------------------------
 -- Ex 7: using the State monad, write the operation `update` that first
@@ -201,7 +202,9 @@ rob from to = todo
 --    ==> ((),7)
 
 update :: State Int ()
-update = todo
+update =
+  get >>= \x -> put (x*2) >>
+  get >>= \x -> put (x+1)
 
 ------------------------------------------------------------------------------
 -- Ex 8: Checking that parentheses are balanced with the State monad.
@@ -229,7 +232,10 @@ update = todo
 --   parensMatch "(()))("      ==> False
 
 paren :: Char -> State Int ()
-paren = todo
+paren c
+  | c == '(' = get >>= \x -> if x == (-1) then put x else put (x+1)
+  | c == ')' = get >>= \x -> if x == (-1) then put x else put (x-1)
+  | otherwise = get >>= \x -> put x
 
 parensMatch :: String -> Bool
 parensMatch s = count == 0
@@ -260,7 +266,11 @@ parensMatch s = count == 0
 -- PS. The order of the list of pairs doesn't matter
 
 count :: Eq a => a -> State [(a,Int)] ()
-count x = todo
+count x = get >>= \s -> return (newState x s) >>= \w -> put w where
+  newState a [] = [(a,1)]
+  newState a (x:xs)
+    | a == fst x = (a,(snd x)+1) : xs
+    | otherwise = x : (newState a xs)
 
 ------------------------------------------------------------------------------
 -- Ex 10: Implement the operation occurrences, which
@@ -282,4 +292,4 @@ count x = todo
 --    ==> (4,[(2,1),(3,1),(4,1),(7,1)])
 
 occurrences :: (Eq a) => [a] -> State [(a,Int)] Int
-occurrences xs = todo
+occurrences xs = mapM count xs >> get >>= \x -> return (length x)
