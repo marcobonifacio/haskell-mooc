@@ -43,6 +43,14 @@ fmap2 f x = fmap f <$> x
 fmap3 :: (Functor f, Functor g, Functor h) => (a -> b) -> f (g (h a)) -> f (g (h b))
 fmap3 f x = fmap (f <$>) <$> x
 
+-- fmap2 :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
+-- fmap2 f x = fmap (fmap f) x
+
+-- fmap3 :: (Functor f, Functor g, Functor h) => (a -> b) -> f (g (h a)) -> f (g (h b))
+-- fmap3 = fmap . fmap . fmap
+-- -- This is the same as:
+-- --fmap3 f x = fmap (fmap (fmap f)) x
+
 ------------------------------------------------------------------------------
 -- Ex 3: below you'll find a type Result that works a bit like Maybe,
 -- but there are two different types of "Nothings": one with and one
@@ -103,6 +111,13 @@ instance Functor TwoList where
 count :: (Eq a, Foldable f) => a -> f a -> Int
 count el fs = length (filter (== el) (toList fs))
 
+-- count x f = foldr check 0 f
+--   where check y n
+--           | y == x    = n+1
+--           | otherwise = n
+-- -- OR using some library functions:
+-- count' x f = sum $ fmap (\y -> if x==y then 1 else 0) f
+
 ------------------------------------------------------------------------------
 -- Ex 7: Return all elements that are in two Foldables, as a list.
 --
@@ -113,6 +128,11 @@ count el fs = length (filter (== el) (toList fs))
 
 inBoth :: (Foldable f, Foldable g, Eq a) => f a -> g a -> [a]
 inBoth fs gs = toList fs `intersect` toList gs
+
+-- inBoth f g = foldr keep [] f
+--   where keep x xs
+--           | elem x g  = x:xs
+--           | otherwise = xs
 
 ------------------------------------------------------------------------------
 -- Ex 8: Implement the instance Foldable List.
@@ -153,6 +173,8 @@ runFun (Fun f) x = f x
 
 instance Functor Fun where
   fmap f (Fun n) = Fun (f <$> n)
+
+-- fmap f (Fun g) = Fun (f.g)
 
 ------------------------------------------------------------------------------
 -- Ex 11: (Tricky!) You'll find the binary tree type from Set 5b
@@ -213,7 +235,8 @@ instance Functor Tree where
   fmap f (Node val left right) = Node (f val) (fmap f left) (fmap f right)
 
 sumTree :: Monoid m => Tree m -> m
-sumTree = todo
+sumTree Leaf = mempty
+sumTree (Node a l r) = sumTree l <> a <> sumTree r
 
 instance Foldable Tree where
   foldMap f t = sumTree (fmap f t)

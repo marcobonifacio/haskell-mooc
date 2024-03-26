@@ -11,7 +11,7 @@ import Data.List
 import qualified Data.Map as Map
 
 import Examples.Bank
-
+import System.Win32 (xBUTTON1, iNVALID_HANDLE_VALUE, globalAlloc)
 
 ------------------------------------------------------------------------------
 -- Ex 1: Your task is to help implement the function readName that
@@ -47,19 +47,20 @@ readNames s =
 -- (NB! There are obviously other corner cases like the inputs " " and
 -- "a b c", but you don't need to worry about those here)
 split :: String -> Maybe (String,String)
-split = todo
+split s = if ' ' `elem` s then Just (splitAt n s) else Nothing where
+  n = length (takeWhile (/=' ') $ dropWhile (==' ') s) + 1
 
 -- checkNumber should take a pair of two strings and return them
 -- unchanged if they don't contain numbers. Otherwise Nothing is
 -- returned.
 checkNumber :: (String, String) -> Maybe (String, String)
-checkNumber = todo
+checkNumber (s1,s2) = if any isDigit s1 || any isDigit s2 then Nothing else Just (takeWhile (/=' ') s1,s2)
 
 -- checkCapitals should take a pair of two strings and return them
 -- unchanged if both start with a capital letter. Otherwise Nothing is
 -- returned.
 checkCapitals :: (String, String) -> Maybe (String, String)
-checkCapitals (for,sur) = todo
+checkCapitals (for,sur) = if isUpper (head for) && isUpper (head sur) then Just (takeWhile (/=' ') for,sur) else Nothing
 
 ------------------------------------------------------------------------------
 -- Ex 2: Given a list of players and their scores (as [(String,Int)]),
@@ -86,7 +87,15 @@ checkCapitals (for,sur) = todo
 --     ==> Just "a"
 
 winner :: [(String,Int)] -> String -> String -> Maybe String
-winner scores player1 player2 = todo
+winner scores player1 player2 =
+  -- fstScore <- lookup player1 scores
+  -- scdScore <- lookup player2 scores
+  -- calculate fstScore scdScore
+  -- where
+  --   calculate x y = if x >= y then Just player1 else Just player2
+  lookup player1 scores ?>
+  \x -> lookup player2 scores ?>
+  \y -> if x >= y then Just player1 else Just player2
 
 ------------------------------------------------------------------------------
 -- Ex 3: given a list of indices and a list of values, return the sum
@@ -104,7 +113,12 @@ winner scores player1 player2 = todo
 --    Nothing
 
 selectSum :: Num a => [a] -> [Int] -> Maybe a
-selectSum xs is = todo
+selectSum xs is = mapM (safeIndex xs) is >>= \x -> return (sum x)
+
+safeIndex :: [a] -> Int -> Maybe a
+safeIndex xs n
+  | n < 0 || n > length xs - 1 = Nothing
+  | otherwise = Just (xs !! n)
 
 ------------------------------------------------------------------------------
 -- Ex 4: Here is the Logger monad from the course material. Implement
@@ -138,7 +152,8 @@ instance Applicative Logger where
   (<*>) = ap
 
 countAndLog :: Show a => (a -> Bool) -> [a] -> Logger Int
-countAndLog = todo
+countAndLog p xs =
+  (mapM (msg . show) >=> (return . length)) (filter p xs)
 
 ------------------------------------------------------------------------------
 -- Ex 5: You can find the Bank and BankOp code from the course
@@ -152,10 +167,11 @@ countAndLog = todo
 -- from Data.Map are available under the prefix Map.
 
 exampleBank :: Bank
-exampleBank = (Bank (Map.fromList [("harry",10),("cedric",7),("ginny",1)]))
+exampleBank = Bank (Map.fromList [("harry",10),("cedric",7),("ginny",1)])
 
 balance :: String -> BankOp Int
-balance accountName = todo
+balance accountName = BankOp go where
+  go (Bank bank) = (Map.findWithDefault 0 accountName bank, Bank bank)
 
 ------------------------------------------------------------------------------
 -- Ex 6: Using the operations balance, withdrawOp and depositOp, and
