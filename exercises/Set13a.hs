@@ -49,6 +49,9 @@ split :: String -> Maybe (String,String)
 split s = if ' ' `elem` s then Just (splitAt n s) else Nothing where
   n = length (takeWhile (/=' ') $ dropWhile (==' ') s) + 1
 
+-- split s = case break (==' ') s of (a,' ':b) -> Just (a,b)
+--                                   _         -> Nothing
+
 -- checkNumber should take a pair of two strings and return them
 -- unchanged if they don't contain numbers. Otherwise Nothing is
 -- returned.
@@ -93,8 +96,8 @@ winner scores player1 player2 =
   -- where
   --   calculate x y = if x >= y then Just player1 else Just player2
   lookup player1 scores ?>
-  \x -> lookup player2 scores ?>
-  \y -> if x >= y then Just player1 else Just player2
+    \x -> lookup player2 scores ?>
+      \y -> if x >= y then Just player1 else Just player2
 
 ------------------------------------------------------------------------------
 -- Ex 3: given a list of indices and a list of values, return the sum
@@ -113,6 +116,8 @@ winner scores player1 player2 =
 
 selectSum :: Num a => [a] -> [Int] -> Maybe a
 selectSum xs is = mapM (safeIndex xs) is >>= \x -> return (sum x)
+
+-- selectSum xs is = liftM sum $ mapM (safeIndex xs) is
 
 safeIndex :: [a] -> Int -> Maybe a
 safeIndex xs n
@@ -153,6 +158,13 @@ instance Applicative Logger where
 countAndLog :: Show a => (a -> Bool) -> [a] -> Logger Int
 countAndLog p xs =
   (mapM (msg . show) >=> (return . length)) (filter p xs)
+
+-- countAndLog p [] = return 0
+-- countAndLog p (x:xs)
+--   | p x = do msg (show x)
+--              res <- countAndLog p xs
+--              return (res+1)
+--   | otherwise = countAndLog p xs
 
 ------------------------------------------------------------------------------
 -- Ex 5: You can find the Bank and BankOp code from the course
@@ -266,11 +278,11 @@ parensMatch s = count == 0
 -- PS. The order of the list of pairs doesn't matter
 
 count :: Eq a => a -> State [(a,Int)] ()
-count x = get >>= \s -> return (newState x s) >>= \w -> put w where
+count x = get >>= \s -> put (newState x s) where
   newState a [] = [(a,1)]
   newState a (x:xs)
-    | a == fst x = (a,(snd x)+1) : xs
-    | otherwise = x : (newState a xs)
+    | a == fst x = (a,snd x+1) : xs
+    | otherwise = x : newState a xs
 
 ------------------------------------------------------------------------------
 -- Ex 10: Implement the operation occurrences, which
@@ -292,4 +304,4 @@ count x = get >>= \s -> return (newState x s) >>= \w -> put w where
 --    ==> (4,[(2,1),(3,1),(4,1),(7,1)])
 
 occurrences :: (Eq a) => [a] -> State [(a,Int)] Int
-occurrences xs = mapM count xs >> get >>= \x -> return (length x)
+occurrences xs = mapM_ count xs >> get >>= \x -> return (length x)
