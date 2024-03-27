@@ -331,7 +331,7 @@ modifySL f = SL (\s -> ((),f s,[]))
 instance Functor SL where
   -- implement fmap
   fmap :: (a -> b) -> SL a -> SL b
-  fmap f (SL a) = SL (f a)
+  fmap f (SL a) = SL (f <$> a)
 
 -- This is an Applicative instance that works for any monad, you
 -- can just ignore it for now. We'll get back to Applicative later.
