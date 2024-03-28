@@ -9,6 +9,7 @@ import Control.Monad.Trans.State
 import Data.Char
 import Data.IORef
 import Data.List
+import GHC.IO.Handle (hGetChar)
 
 
 ------------------------------------------------------------------------------
@@ -87,6 +88,13 @@ perhapsIncrement False _ = return ()
 mapM2 :: Monad m => (a -> b -> m c) -> [a] -> [b] -> m [c]
 mapM2 = zipWithM            -- sequenceA (zipWith op xs ys)
 
+-- mapM2 op [] _ = return []
+-- mapM2 op _ [] = return []
+-- mapM2 op (x:xs) (y:ys) = do
+--   v <- op x y
+--   rest <- mapM2 op xs ys
+--   return (v:rest)
+
 ------------------------------------------------------------------------------
 -- Ex 3: Finding paths.
 --
@@ -157,6 +165,9 @@ visit maze place =
 path :: [(String,[String])] -> String -> String -> Bool
 path maze place1 place2 = place2 `elem` execState (visit maze place1) []
 
+-- path maze place1 place2 = elem place2 reachable
+--   where (_,reachable) = runState (visit maze place1) []
+
 ------------------------------------------------------------------------------
 -- Ex 4: Given two lists, ks and ns, find numbers i and j from ks,
 -- such that their sum i+j=n is in ns. Return all such triples
@@ -172,7 +183,7 @@ path maze place1 place2 = place2 `elem` execState (visit maze place1) []
 
 findSum2 :: [Int] -> [Int] -> [(Int,Int,Int)]
 findSum2 ks ns =
-  ks >>= \i -> ks >>= \j -> ([(i,j,i+j) | (i + j) `elem` ns])
+  ks >>= \i -> ks >>= \j -> ([(i,j,i+j) | i + j `elem` ns])
 
 ------------------------------------------------------------------------------
 -- Ex 5: compute all possible sums of elements from the given
@@ -195,6 +206,11 @@ findSum2 ks ns =
 allSums :: [Int] -> [Int]
 allSums [] = [0]
 allSums xs = map sum (subsequences xs)
+
+-- allSums [] = [0]
+-- allSums (x:xs) = do xOrZero <- [0,x]
+--                     sumRest <- allSums xs
+--                     return (xOrZero + sumRest)
 
 ------------------------------------------------------------------------------
 -- Ex 6: the standard library defines the function
@@ -221,7 +237,7 @@ allSums xs = map sum (subsequences xs)
 --  sumBounded 5 [1,2,3,1,-2]   -- 1+2+3=6 which results in Nothing
 --    ==> Nothing
 sumBounded :: Int -> [Int] -> Maybe Int
-sumBounded k xs = foldM (f1 k) 0 xs
+sumBounded k = foldM (f1 k) 0
 
 f1 :: Int -> Int -> Int -> Maybe Int
 f1 k acc x = if acc + x > k then Nothing else Just (acc + x)
@@ -235,13 +251,13 @@ f1 k acc x = if acc + x > k then Nothing else Just (acc + x)
 --  sumNotTwice [3,-2,3]         ==> 1
 --  sumNotTwice [1,2,-2,3]       ==> 4
 sumNotTwice :: [Int] -> Int
-sumNotTwice xs = fst $ runState (foldM f2 0 xs) []
+sumNotTwice xs = evalState (foldM f2 0 xs) []
 
 f2 :: Int -> Int -> State [Int] Int
-f2 acc x = 
-  get >>= 
-    \s -> if x `elem` s 
-      then put s >> return acc 
+f2 acc x =
+  get >>=
+    \s -> if x `elem` s
+      then put s >> return acc
       else put (x : s) >> return (acc + x)
 
 ------------------------------------------------------------------------------
@@ -310,7 +326,7 @@ data SL a = SL (Int -> (a,Int,[String]))
 
 -- Run an SL operation with the given starting state
 runSL :: SL a -> Int -> (a,Int,[String])
-runSL (SL f) state = f state
+runSL (SL f) = f
 
 -- Write a log message
 msgSL :: String -> SL ()
@@ -322,7 +338,7 @@ getSL = SL (\s -> (s,s,[]))
 
 -- Overwrite the state
 putSL :: Int -> SL ()
-putSL s' = SL (\s -> ((),s',[]))
+putSL s' = SL (const ((), s', []))
 
 -- Modify the state
 modifySL :: (Int->Int) -> SL ()
@@ -331,7 +347,9 @@ modifySL f = SL (\s -> ((),f s,[]))
 instance Functor SL where
   -- implement fmap
   fmap :: (a -> b) -> SL a -> SL b
-  fmap f (SL a) = SL (f a)
+  fmap f (SL g) = SL $ \s0 ->
+    let (a, s1, log) = g s0
+    in (f a, s1, log)
 
 -- This is an Applicative instance that works for any monad, you
 -- can just ignore it for now. We'll get back to Applicative later.
@@ -339,10 +357,23 @@ instance Applicative SL where
   pure = return
   (<*>) = ap
 
+passMsg :: [String] -> (a, Int, [String]) -> (a, Int, [String])
+passMsg new (a, state, prev) = (a, state, new ++ prev)
+
 instance Monad SL where
   -- implement return and >>=
-  return = todo
-  (>>=) = todo
+  return x = SL (\s -> (x, s, []))
+  (>>=) op f = SL h
+    where h state0 = passMsg msg $ runSL (f val1) state1
+            where (val1, state1, msg) = runSL op state0
+  
+  -- return x = SL (\s -> (x,s,[]))
+  -- op >>= f = SL g
+  --   where g state0 = let (v,state1,log) = runSL op state0
+  --                        op2 = f v
+  --                        (v2,state2,log2) = runSL op2 state1
+  --                    in (v2,state2,log++log2)
+
 
 ------------------------------------------------------------------------------
 -- Ex 9: Implement the operation mkCounter that produces the IO operations
@@ -370,4 +401,12 @@ instance Monad SL where
 --  4
 
 mkCounter :: IO (IO (), IO Int)
-mkCounter = todo
+mkCounter = 
+  newIORef 0 >>= 
+    \c -> return (void (modifyIORef c (+1)), readIORef c >>= \r -> return r)
+
+-- mkCounter = do
+--   ref <- newIORef 0
+--   let get = readIORef ref
+--       inc = modifyIORef ref (+1)
+--   return (inc,get)
