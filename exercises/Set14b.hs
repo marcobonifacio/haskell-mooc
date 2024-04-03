@@ -76,12 +76,16 @@ getAllQuery = Query (T.pack "SELECT account, amount FROM events;")
 -- NOTE! Do not add anything to the name, otherwise you'll get weird
 -- test failures later.
 openDatabase :: String -> IO Connection
-openDatabase = todo
+openDatabase filename =
+  open filename >>= 
+    \db -> execute_ db initQuery >>
+    return db
 
 -- given a db connection, an account name, and an amount, deposit
 -- should add an (account, amount) row into the database
 deposit :: Connection -> T.Text -> Int -> IO ()
-deposit = todo
+deposit conn account amount = 
+  execute conn depositQuery (account,amount)
 
 ------------------------------------------------------------------------------
 -- Ex 2: Fetching an account's balance. Below you'll find
@@ -112,7 +116,11 @@ balanceQuery :: Query
 balanceQuery = Query (T.pack "SELECT amount FROM events WHERE account = ?;")
 
 balance :: Connection -> T.Text -> IO Int
-balance = todo
+balance conn account = todo 
+--  query conn balanceQuery [T.unpack account] >>= 
+--    \xs -> if null xs 
+--           then return 0 
+--           else forM_ xs $ \amount -> return (sum amount)
 
 ------------------------------------------------------------------------------
 -- Ex 3: Now that we have the database part covered, let's think about
