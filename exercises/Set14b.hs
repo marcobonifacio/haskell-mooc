@@ -27,6 +27,9 @@ import Network.HTTP.Types (status200)
 
 -- Database
 import Database.SQLite.Simple (open,execute,execute_,query,query_,Connection,Query(..))
+import Data.Maybe (Maybe(Nothing))
+import GHC.Profiling (requestHeapCensus)
+import Data.Char (isDigit)
 
 ------------------------------------------------------------------------------
 -- Ex 1: Let's start with implementing some database operations. The
@@ -77,14 +80,14 @@ getAllQuery = Query (T.pack "SELECT account, amount FROM events;")
 -- test failures later.
 openDatabase :: String -> IO Connection
 openDatabase filename =
-  open filename >>= 
+  open filename >>=
     \db -> execute_ db initQuery >>
     return db
 
 -- given a db connection, an account name, and an amount, deposit
 -- should add an (account, amount) row into the database
 deposit :: Connection -> T.Text -> Int -> IO ()
-deposit conn account amount = 
+deposit conn account amount =
   execute conn depositQuery (account,amount)
 
 ------------------------------------------------------------------------------
@@ -116,11 +119,9 @@ balanceQuery :: Query
 balanceQuery = Query (T.pack "SELECT amount FROM events WHERE account = ?;")
 
 balance :: Connection -> T.Text -> IO Int
-balance conn account = todo 
---  query conn balanceQuery [T.unpack account] >>= 
---    \xs -> if null xs 
---           then return 0 
---           else forM_ xs $ \amount -> return (sum amount)
+balance conn account = do
+  result <- query conn balanceQuery [account] :: IO [[Int]]
+  return $ sum $ map sum result
 
 ------------------------------------------------------------------------------
 -- Ex 3: Now that we have the database part covered, let's think about
@@ -152,14 +153,20 @@ balance conn account = todo
 --   parseCommand [T.pack "deposit", T.pack "madoff", T.pack "123456"]
 --     ==> Just (Deposit "madoff" 123456)
 
-data Command = Deposit T.Text Int | Balance T.Text
+data Command = Deposit T.Text Int | Balance T.Text | Withdraw T.Text Int
   deriving (Show, Eq)
 
 parseInt :: T.Text -> Maybe Int
 parseInt = readMaybe . T.unpack
 
 parseCommand :: [T.Text] -> Maybe Command
-parseCommand = todo
+parseCommand [x, y] = if T.unpack x == "balance" then Just (Balance y) else Nothing
+parseCommand [x, y, z] = do
+  amt <- parseInt z
+  case T.unpack x of "deposit" -> Just (Deposit y amt)
+                     "withdraw" -> Just (Deposit y (-amt))
+                     unknown -> Nothing
+parseCommand _ = Nothing
 
 ------------------------------------------------------------------------------
 -- Ex 4: Running commands. Implement the IO operation perform that takes a
@@ -185,7 +192,14 @@ parseCommand = todo
 --   "0"
 
 perform :: Connection -> Maybe Command -> IO T.Text
-perform = todo
+perform db cmd =
+  case cmd of Just (Deposit account amount ) -> do
+                deposit db account amount
+                return (T.pack "OK")
+              Just (Balance account) -> do
+                amt <- balance db account
+                return (T.pack (show amt))
+              Nothing -> return (T.pack "ERROR")
 
 ------------------------------------------------------------------------------
 -- Ex 5: Next up, let's set up a simple HTTP server. Implement a WAI
@@ -205,7 +219,8 @@ encodeResponse t = LB.fromStrict (encodeUtf8 t)
 -- Remember:
 -- type Application = Request -> (Response -> IO ResponseReceived) -> IO ResponseReceived
 simpleServer :: Application
-simpleServer request respond = todo
+simpleServer request respond =
+  respond (responseLBS status200 [] (encodeResponse (T.pack "BANK")))
 
 ------------------------------------------------------------------------------
 -- Ex 6: Now we finally have all the pieces we need to actually
@@ -234,7 +249,10 @@ simpleServer request respond = todo
 -- Remember:
 -- type Application = Request -> (Response -> IO ResponseReceived) -> IO ResponseReceived
 server :: Connection -> Application
-server db request respond = todo
+server db request respond = do
+  let path = pathInfo request
+  result <- perform db (parseCommand path)
+  respond (responseLBS status200 [] (encodeResponse $ result))
 
 port :: Int
 port = 3421
